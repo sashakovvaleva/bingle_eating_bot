@@ -62,7 +62,9 @@ async def process_name(message: types.Message, state: FSMContext):
     logger.info(f"Processing name for user {message.from_user.id}: {message.text}")
     await state.update_data(name=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]],
+        keyboard=[
+            [KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]
+        ],
         resize_keyboard=True
     )
     await message.answer("Выбери пол:", reply_markup=kb)
@@ -77,8 +79,10 @@ async def gender(message: types.Message, state: FSMContext):
     await save_user(message.from_user.id, data["name"], gender)
     await state.update_data(gender=gender)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
-                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
+        keyboard=[
+            [KeyboardButton(text=str(i)) for i in range(1, 6)],
+            [KeyboardButton(text=str(i)) for i in range(6, 11)]
+        ],
         resize_keyboard=True
     )
     await message.answer(f"{data['name']}, от 1 до 10, какой был голод перед едой?", reply_markup=kb)
@@ -94,8 +98,10 @@ async def meal(message: types.Message, state: FSMContext):
     name, gender = user
     await state.update_data(gender=gender)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
-                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
+        keyboard=[
+            [KeyboardButton(text=str(i)) for i in range(1, 6)],
+            [KeyboardButton(text=str(i)) for i in range(6, 11)]
+        ],
         resize_keyboard=True
     )
     await message.answer(f"{name}, от 1 до 10, какой был голод перед едой?", reply_markup=kb)
@@ -105,8 +111,10 @@ async def meal(message: types.Message, state: FSMContext):
 async def hunger_before(message: types.Message, state: FSMContext):
     await state.update_data(hunger_before=int(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
-                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
+        keyboard=[
+            [KeyboardButton(text=str(i)) for i in range(1, 6)],
+            [KeyboardButton(text=str(i)) for i in range(6, 11)]
+        ],
         resize_keyboard=True
     )
     await message.answer("Какой уровень сытости после?", reply_markup=kb)
@@ -118,7 +126,7 @@ async def satiety_after(message: types.Message, state: FSMContext):
     emotions = ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]
     # ИСПРАВЛЕНО: правильный синтаксис для создания клавиатуры
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=em)] for em in emotions], 
+        keyboard=[[KeyboardButton(text=emotion)] for emotion in emotions], 
         resize_keyboard=True
     )
     await message.answer("Какую эмоцию ты испытывал(а)?", reply_markup=kb)
@@ -128,8 +136,10 @@ async def satiety_after(message: types.Message, state: FSMContext):
 async def emotion(message: types.Message, state: FSMContext):
     await state.update_data(emotion=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 7)],
-                  [KeyboardButton(text=str(i)) for i in range(7, 13)]],
+        keyboard=[
+            [KeyboardButton(text=str(i)) for i in range(1, 7)],
+            [KeyboardButton(text=str(i)) for i in range(7, 13)]
+        ],
         resize_keyboard=True
     )
     await message.answer("Сколько часов ты спал(а)?", reply_markup=kb)
@@ -139,7 +149,9 @@ async def emotion(message: types.Message, state: FSMContext):
 async def sleep_hours(message: types.Message, state: FSMContext):
     await state.update_data(sleep_hours=float(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]],
+        keyboard=[
+            [KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]
+        ],
         resize_keyboard=True
     )
     await message.answer("Где ты ел(а)?", reply_markup=kb)
@@ -149,7 +161,9 @@ async def sleep_hours(message: types.Message, state: FSMContext):
 async def location(message: types.Message, state: FSMContext):
     await state.update_data(location=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]],
+        keyboard=[
+            [KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]
+        ],
         resize_keyboard=True
     )
     await message.answer("Ты ел(а) один/одна или с кем-то?", reply_markup=kb)
@@ -159,7 +173,9 @@ async def location(message: types.Message, state: FSMContext):
 async def company(message: types.Message, state: FSMContext):
     await state.update_data(company=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]],
+        keyboard=[
+            [KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]
+        ],
         resize_keyboard=True
     )
     await message.answer("Ты ел(а) с телефоном или без?", reply_markup=kb)
@@ -182,8 +198,10 @@ async def cycle_day(message: types.Message, state: FSMContext):
 
 async def ask_binge(message: types.Message, state: FSMContext):
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
-                  [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]],
+        keyboard=[
+            [KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
+            [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]
+        ],
         resize_keyboard=True
     )
     await message.answer("Было ли переедание/срыв?", reply_markup=kb)
