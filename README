@@ -1,0 +1,134 @@
+Telegram Bot for Emotion Diary and Monitoring Eating Disorders (ED)
+📖 Project Description
+This project is a Telegram bot designed to keep an emotion and physical state diary related to eating habits. The bot allows users to record daily their feelings, hunger and satiety levels, emotional states, eating circumstances, and other important factors.
+
+The collected data is used for analysis and to build a personalized model predicting risks of binge eating and relapses associated with eating disorders (ED). This helps better understand which emotions and situations trigger episodes, supporting mindful control and improving quality of life.
+
+🎯 Project Goals
+Create a convenient self-monitoring tool to collect data about food intake and emotional states.
+
+Build a personalized database for analyzing eating behavior patterns.
+
+Train a model based on collected data to predict possible episodes of binge eating and relapses.
+
+Promote mindful eating habits and reduce risk of developing or relapsing ED.
+
+🍽 What are Eating Disorders?
+Eating Disorders (ED) are a group of psychological and behavioral disorders related to disordered eating, body image, and emotional health.
+The most common types include:
+
+Anorexia nervosa
+
+Bulimia nervosa
+
+Binge Eating Disorder (BED)
+
+EDs seriously affect physical and mental health, quality of life, and social functioning.
+
+⚠ Why Track Emotions and Eating Behavior?
+Emotional states — such as stress, anxiety, boredom, tiredness — often act as triggers for relapses and binge eating.
+Monitoring these factors over time allows to:
+
+Identify patterns and triggers
+
+Prevent development of negative behaviors
+
+Improve emotional regulation and build healthier habits
+
+📋 Bot Features
+User registration and data storage (name, gender)
+
+Recording each eating event with parameters:
+
+Hunger level before eating (1–10)
+
+Satiety level after eating (1–10)
+
+Emotion before eating (stress, anger, boredom, anxiety, sadness, fatigue)
+
+Hours of sleep last night
+
+Eating circumstances (location, company, phone use)
+
+Day of menstrual cycle
+
+Presence of binge eating or relapse
+
+Data storage in SQLite database
+
+Ability to export and analyze data with Python and pandas
+
+Future plans: model training to predict relapse risks
+
+🚀 Installation and Setup
+Clone the repository:
+
+
+git clone https://github.com/yourusername/yourproject.git
+cd yourproject
+
+
+Install dependencies:
+pip install -r requirements.txt
+
+
+Create and activate a virtual environment (recommended):
+python -m venv venv
+source venv/bin/activate  # Linux / macOS
+venv\Scripts\activate     # Windows
+
+
+Initialize the database:
+python init_db.py
+
+
+Run the Telegram bot:
+python bot.py
+
+
+🛠 Usage
+Open Telegram and find your bot by username.
+
+Register by providing your name and gender.
+
+Start logging your meals by answering the bot’s questions.
+
+After the data collection period, export and analyze your data in Python.
+
+Use visualizations to understand your behavior patterns.
+
+📊 Analysis and Visualization
+The project includes scripts to load data from the database and create basic plots:
+
+Emotion distribution before meals
+
+Hunger and satiety levels over time
+
+Frequency of binge episodes
+
+Impact of sleep on relapses
+
+Relationship between cycle day and relapses
+
+💡 Future Plans
+Develop a machine learning model to predict relapse risks
+
+Add user notifications and personalized recommendations
+
+Expand data collection (e.g., stress levels, physical activity)
+
+Create a visual dashboard for easier state monitoring
+
+📚 Resources and Literature
+National Eating Disorders Association (NEDA)
+
+Eating disorder overview on Wikipedia
+
+Article on the emotional side of eating disorders
+
+👤 Author
+Aliaksandra Kavaliova
+
+GitHub: https://github.com/sashakovvaleva
+
+If you have questions or suggestions, feel free to reach out!

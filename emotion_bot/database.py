@@ -1,24 +1,54 @@
-import aiosqlite
+import asyncpg
+import os
+from dotenv import load_dotenv
+from urllib.parse import urlparse
 
-DB_NAME = "emotion_data.db"
+load_dotenv()
+
+# Получаем URL подключения из Railway
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+async def get_pool():
+    if DATABASE_URL:
+        # Парсим URL подключения
+        url = urlparse(DATABASE_URL)
+        # Создаем пул соединений
+        return await asyncpg.create_pool(
+            user=url.username,
+            password=url.password,
+            host=url.hostname,
+            port=url.port,
+            database=url.path[1:],  # Убираем первый слеш из пути
+            ssl='require'  # Railway требует SSL
+        )
+    else:
+        # Для локальной разработки
+        return await asyncpg.create_pool(
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "postgres"),
+            host=os.getenv("DB_HOST", "localhost"),
+            port=os.getenv("DB_PORT", "5432"),
+            database=os.getenv("DB_NAME", "emotion_bot")
+        )
 
 async def init_db():
-    async with aiosqlite.connect(DB_NAME) as db:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
         # Создаем таблицу пользователей
-        await db.execute('''
+        await conn.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                name TEXT,
-                gender TEXT
+                user_id BIGINT PRIMARY KEY,
+                name TEXT NOT NULL,
+                gender TEXT NOT NULL
             )
         ''')
         
         # Создаем таблицу записей
-        await db.execute('''
+        await conn.execute('''
             CREATE TABLE IF NOT EXISTS entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                user_id INTEGER,
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_id BIGINT REFERENCES users(user_id),
                 hunger_before INTEGER,
                 satiety_after INTEGER,
                 emotion TEXT,
@@ -27,34 +57,41 @@ async def init_db():
                 company TEXT,
                 phone TEXT,
                 cycle_day INTEGER,
-                binge_eating TEXT,
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
+                binge_eating TEXT
             )
         ''')
-        await db.commit()
+    await pool.close()
 
 async def get_user(user_id: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute('SELECT name, gender FROM users WHERE user_id = ?', (user_id,)) as cursor:
-            return await cursor.fetchone()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchrow(
+            'SELECT name, gender FROM users WHERE user_id = $1',
+            user_id
+        )
+    await pool.close()
 
 async def save_user(user_id: int, name: str, gender: str):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute('''
-            INSERT OR REPLACE INTO users (user_id, name, gender)
-            VALUES (?, ?, ?)
-        ''', (user_id, name, gender))
-        await db.commit()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            INSERT INTO users (user_id, name, gender)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE 
+            SET name = $2, gender = $3
+        ''', user_id, name, gender)
+    await pool.close()
 
 async def insert_entry(user_id: int, data: dict):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute('''
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute('''
             INSERT INTO entries (
                 user_id, hunger_before, satiety_after, emotion, 
                 sleep_hours, location, company, phone, 
                 cycle_day, binge_eating
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         ''', (
             user_id,
             data["hunger_before"],
@@ -67,4 +104,4 @@ async def insert_entry(user_id: int, data: dict):
             data.get("cycle_day"),
             data["binge_eating"]
         ))
-        await db.commit()
+    await pool.close()
