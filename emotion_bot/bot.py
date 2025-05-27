@@ -1,5 +1,5 @@
 # emotion_bot/bot.py
-# Last updated: 2024-03-21 - Fixed keyboard creation syntax for aiogram 3.x
+# Last updated: 2024-03-21 - Fixed for Railway deployment
 
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -8,17 +8,28 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
-from database import init_db, insert_entry, get_user, save_user
+from database import init_db, insert_entry, get_user, save_user, close_db
 from dotenv import load_dotenv
 import os
 import logging
+import sys
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    logger.error("BOT_TOKEN not found in environment variables")
+    sys.exit(1)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -124,7 +135,6 @@ async def hunger_before(message: types.Message, state: FSMContext):
 async def satiety_after(message: types.Message, state: FSMContext):
     await state.update_data(satiety_after=int(message.text))
     emotions = ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]
-    # ИСПРАВЛЕНО: правильный синтаксис для создания клавиатуры
     kb = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=emotion)] for emotion in emotions], 
         resize_keyboard=True
@@ -218,8 +228,49 @@ async def binge_eating(message: types.Message, state: FSMContext):
     await state.clear()
 
 async def main():
-    await init_db()
-    await dp.start_polling(bot)
+    logger.info("Starting bot initialization...")
+    
+    try:
+        # Инициализация базы данных
+        await init_db()
+        logger.info("Database initialized successfully")
+        
+        # Очистка webhook и pending updates для Railway
+        logger.info("Clearing webhook and pending updates...")
+        await bot.delete_webhook(drop_pending_updates=True)
+        await asyncio.sleep(1)  # Небольшая пауза
+        
+        # Получение информации о боте
+        bot_info = await bot.get_me()
+        logger.info(f"Bot started: @{bot_info.username} (ID: {bot_info.id})")
+        
+        # Запуск polling с обработкой ошибок
+        logger.info("Starting polling...")
+        await dp.start_polling(
+            bot, 
+            skip_updates=True,  # Пропускаем старые обновления
+            allowed_updates=["message", "callback_query"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Error during bot startup: {e}")
+        if "Conflict" in str(e):
+            logger.error("Bot conflict detected. This usually means:")
+            logger.error("1. Another instance is already running")
+            logger.error("2. Previous deployment didn't shut down properly")
+            logger.error("3. Multiple Railway services are running the same bot")
+            logger.error("Please check your Railway dashboard and stop other instances")
+        raise
+    finally:
+        logger.info("Shutting down bot...")
+        await close_db()  # Закрываем соединения с БД
+        await bot.session.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user (Ctrl+C)")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        sys.exit(1)
