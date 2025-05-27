@@ -166,10 +166,15 @@ async def emotion(message: types.Message, state: FSMContext):
 async def sleep_hours(message: types.Message, state: FSMContext):
     await state.update_data(sleep_hours=float(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]],
+        keyboard=[
+            [KeyboardButton(text="🏠 Дома"), KeyboardButton(text="💼 Работа/Учеба")],
+            [KeyboardButton(text="🍽️ Кафе/Ресторан"), KeyboardButton(text="🚶 На ходу")],
+            [KeyboardButton(text="🚗 В машине"), KeyboardButton(text="🏢 В гостях")],
+            [KeyboardButton(text="🌳 На природе"), KeyboardButton(text="📱 Другое")]
+        ],
         resize_keyboard=True
     )
-    await message.answer("Где ты ел(а)?", reply_markup=kb)
+    await message.answer("Где ты ел(а)? Выбери наиболее подходящий вариант:", reply_markup=kb)
     await state.set_state(DiaryForm.location)
 
 @dp.message(DiaryForm.location)
@@ -210,12 +215,22 @@ async def cycle_day(message: types.Message, state: FSMContext):
 async def ask_binge(message: types.Message, state: FSMContext):
     kb = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
-            [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]
+            [KeyboardButton(text="✅ Нет, обычный приём пищи"), KeyboardButton(text="⚠️ Лёгкое переедание")],
+            [KeyboardButton(text="❗ Сильное переедание"), KeyboardButton(text="🔥 Срыв/компульсивное переедание")],
+            [KeyboardButton(text="🤔 Не уверен(а)"), KeyboardButton(text="💭 Хочу отметить детали")]
         ],
         resize_keyboard=True
     )
-    await message.answer("Было ли переедание/срыв?", reply_markup=kb)
+    await message.answer(
+        "Как ты оцениваешь этот приём пищи?\n\n"
+        "• Обычный приём пищи — ты съел(а) столько, сколько планировал(а)\n"
+        "• Лёгкое переедание — съел(а) больше обычного, но без сильного дискомфорта\n"
+        "• Сильное переедание — съел(а) значительно больше, есть дискомфорт\n"
+        "• Срыв — потеря контроля над количеством еды\n"
+        "• Не уверен(а) — сложно оценить\n"
+        "• Хочу отметить детали — есть что добавить",
+        reply_markup=kb
+    )
     await state.set_state(DiaryForm.binge_eating)
 
 @dp.message(DiaryForm.binge_eating)
