@@ -202,7 +202,16 @@ async def phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text)
     data = await state.get_data()
     if data["gender"] == "женский":
-        await message.answer("Какой сегодня день цикла?")
+        await message.answer(
+            "Какой сегодня день цикла?\n\n"
+            "📝 Введи число от 1 до 40\n"
+            "(В зависимости от длины твоего цикла эта цифра может варьироваться)\n\n"
+            "• 1-5 день: менструация\n"
+            "• 6-14 день: фолликулярная фаза\n"
+            "• 15-28 день: лютеиновая фаза\n"
+            "• 29-40 день: возможна задержка",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
         await state.set_state(DiaryForm.cycle_day)
     else:
         await ask_binge(message, state)
