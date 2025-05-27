@@ -1,3 +1,5 @@
+# emotion_bot/bot.py
+
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -15,7 +17,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Состояния
 class DiaryForm(StatesGroup):
     name = State()
     gender = State()
@@ -33,18 +34,10 @@ class DiaryForm(StatesGroup):
 async def start(message: types.Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if user:
-        name, gender = user
-        text = (
-            f"Привет, {name}! Я бот-дневник питания и эмоций.\n"
-            "\n"
-            "Доступные команды:\n"
-            "/meal — начать заполнение приема пищи\n"
-        )
+        name, _ = user
+        text = f"Привет, {name}! Я бот-дневник питания и эмоций.\n\nКоманда: /meal — начать приём пищи"
     else:
-        text = (
-            "Привет! Я бот-дневник питания и эмоций.\n"
-            "Давай познакомимся! Как тебя зовут?"
-        )
+        text = "Привет! Я бот-дневник питания и эмоций. Как тебя зовут?"
         await state.set_state(DiaryForm.name)
     await message.answer(text)
 
@@ -52,12 +45,10 @@ async def start(message: types.Message, state: FSMContext):
 async def process_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]
-        ],
+        keyboard=[[KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]],
         resize_keyboard=True
     )
-    await message.answer("Выберите ваш пол:", reply_markup=kb)
+    await message.answer("Выбери пол:", reply_markup=kb)
     await state.set_state(DiaryForm.gender)
 
 @dp.message(DiaryForm.gender)
@@ -66,12 +57,9 @@ async def gender(message: types.Message, state: FSMContext):
     data = await state.get_data()
     await save_user(message.from_user.id, data["name"], gender)
     await state.update_data(gender=gender)
-    
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=str(i)) for i in range(1, 6)],
-            [KeyboardButton(text=str(i)) for i in range(6, 11)]
-        ],
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
+                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
         resize_keyboard=True
     )
     await message.answer(f"{data['name']}, от 1 до 10, какой был голод перед едой?", reply_markup=kb)
@@ -81,18 +69,14 @@ async def gender(message: types.Message, state: FSMContext):
 async def meal(message: types.Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if not user:
-        await message.answer("Давай познакомимся! Как тебя зовут?")
+        await message.answer("Давай сначала познакомимся! Как тебя зовут?")
         await state.set_state(DiaryForm.name)
         return
-
     name, gender = user
     await state.update_data(gender=gender)
-    
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=str(i)) for i in range(1, 6)],
-            [KeyboardButton(text=str(i)) for i in range(6, 11)]
-        ],
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
+                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
         resize_keyboard=True
     )
     await message.answer(f"{name}, от 1 до 10, какой был голод перед едой?", reply_markup=kb)
@@ -102,33 +86,27 @@ async def meal(message: types.Message, state: FSMContext):
 async def hunger_before(message: types.Message, state: FSMContext):
     await state.update_data(hunger_before=int(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=str(i)) for i in range(1, 6)],
-            [KeyboardButton(text=str(i)) for i in range(6, 11)]
-        ],
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 6)],
+                  [KeyboardButton(text=str(i)) for i in range(6, 11)]],
         resize_keyboard=True
     )
-    await message.answer("А какой уровень сытости после?", reply_markup=kb)
+    await message.answer("Какой уровень сытости после?", reply_markup=kb)
     await state.set_state(DiaryForm.satiety_after)
 
 @dp.message(DiaryForm.satiety_after)
 async def satiety_after(message: types.Message, state: FSMContext):
     await state.update_data(satiety_after=int(message.text))
-    kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=em)] for em in ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]],
-        resize_keyboard=True
-    )
-    await message.answer("Какую эмоцию ты испытывал(а) перед приёмом?", reply_markup=kb)
+    emotions = ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]
+    kb = ReplyKeyboardMarkup([[KeyboardButton(text=em)] for em in emotions], resize_keyboard=True)
+    await message.answer("Какую эмоцию ты испытывал(а)?", reply_markup=kb)
     await state.set_state(DiaryForm.emotion)
 
 @dp.message(DiaryForm.emotion)
 async def emotion(message: types.Message, state: FSMContext):
     await state.update_data(emotion=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=str(i)) for i in range(1, 7)],
-            [KeyboardButton(text=str(i)) for i in range(7, 13)]
-        ],
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 7)],
+                  [KeyboardButton(text=str(i)) for i in range(7, 13)]],
         resize_keyboard=True
     )
     await message.answer("Сколько часов ты спал(а)?", reply_markup=kb)
@@ -138,10 +116,7 @@ async def emotion(message: types.Message, state: FSMContext):
 async def sleep_hours(message: types.Message, state: FSMContext):
     await state.update_data(sleep_hours=float(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="дома"), KeyboardButton(text="работа")],
-            [KeyboardButton(text="кафе")]
-        ],
+        keyboard=[[KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]],
         resize_keyboard=True
     )
     await message.answer("Где ты ел(а)?", reply_markup=kb)
@@ -151,21 +126,17 @@ async def sleep_hours(message: types.Message, state: FSMContext):
 async def location(message: types.Message, state: FSMContext):
     await state.update_data(location=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]
-        ],
+        keyboard=[[KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]],
         resize_keyboard=True
     )
-    await message.answer("Ты был(а) один/одна или с кем-то?", reply_markup=kb)
+    await message.answer("Ты ел(а) один/одна или с кем-то?", reply_markup=kb)
     await state.set_state(DiaryForm.company)
 
 @dp.message(DiaryForm.company)
 async def company(message: types.Message, state: FSMContext):
     await state.update_data(company=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]
-        ],
+        keyboard=[[KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]],
         resize_keyboard=True
     )
     await message.answer("Ты ел(а) с телефоном или без?", reply_markup=kb)
@@ -179,28 +150,21 @@ async def phone(message: types.Message, state: FSMContext):
         await message.answer("Какой сегодня день цикла?")
         await state.set_state(DiaryForm.cycle_day)
     else:
-        kb = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
-                [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]
-            ],
-            resize_keyboard=True
-        )
-        await message.answer("Было ли переедание/срыв?", reply_markup=kb)
-        await state.set_state(DiaryForm.binge_eating)
+        await ask_binge(message)
 
 @dp.message(DiaryForm.cycle_day)
 async def cycle_day(message: types.Message, state: FSMContext):
     await state.update_data(cycle_day=int(message.text))
+    await ask_binge(message)
+
+async def ask_binge(message: types.Message):
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
-            [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]
-        ],
+        keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
+                  [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]],
         resize_keyboard=True
     )
     await message.answer("Было ли переедание/срыв?", reply_markup=kb)
-    await state.set_state(DiaryForm.binge_eating)
+    await message.bot.dispatcher.fsm.set_state(DiaryForm.binge_eating)
 
 @dp.message(DiaryForm.binge_eating)
 async def binge_eating(message: types.Message, state: FSMContext):
