@@ -41,9 +41,9 @@ async def main():
         entries = await conn.fetch("""
             SELECT e.*, u.name 
             FROM entries e 
-            JOIN users u ON e.user_id = u.user_id 
-            ORDER BY e.timestamp DESC
+            JOIN users u ON e.user_id = u.id 
         """)
+
         entries_df = pd.DataFrame(entries)
         print("\nEntries DataFrame:")
         print(entries_df)

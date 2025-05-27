@@ -150,21 +150,21 @@ async def phone(message: types.Message, state: FSMContext):
         await message.answer("Какой сегодня день цикла?")
         await state.set_state(DiaryForm.cycle_day)
     else:
-        await ask_binge(message)
+        await ask_binge(message, state)
 
 @dp.message(DiaryForm.cycle_day)
 async def cycle_day(message: types.Message, state: FSMContext):
     await state.update_data(cycle_day=int(message.text))
-    await ask_binge(message)
+    await ask_binge(message, state)
 
-async def ask_binge(message: types.Message):
+async def ask_binge(message: types.Message, state: FSMContext):
     kb = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Нет")],
                   [KeyboardButton(text="Лёгкое"), KeyboardButton(text="Сильное")]],
         resize_keyboard=True
     )
     await message.answer("Было ли переедание/срыв?", reply_markup=kb)
-    await message.bot.dispatcher.fsm.set_state(DiaryForm.binge_eating)
+    await state.set_state(DiaryForm.binge_eating)
 
 @dp.message(DiaryForm.binge_eating)
 async def binge_eating(message: types.Message, state: FSMContext):
