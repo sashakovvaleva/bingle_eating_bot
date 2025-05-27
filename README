@@ -54,7 +54,8 @@ Day of menstrual cycle
 
 Presence of binge eating or relapse
 
-Data storage in SQLite database
+Data storage in Postgres
+database
 
 Ability to export and analyze data with Python and pandas
 
