@@ -1,4 +1,5 @@
 # emotion_bot/bot.py
+# Last updated: 2024-03-21 - Added logging for better debugging
 
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -10,6 +11,11 @@ from aiogram.filters import Command
 from database import init_db, insert_entry, get_user, save_user
 from dotenv import load_dotenv
 import os
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -32,13 +38,15 @@ class DiaryForm(StatesGroup):
 
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
+    logger.info(f"Start command received from user {message.from_user.id}")
     user = await get_user(message.from_user.id)
     if user:
         name, _ = user
         text = f"Привет, {name}! Я бот-дневник питания и эмоций.\n\nКоманда: /meal — начать приём пищи"
+        await message.answer(text)
     else:
         text = (
-            f"Привет, {name}! 👋\n\n"
+            "Привет! 👋\n\n"
             "Я — твой личный бот-дневник питания и эмоций. Помогаю отслеживать, что и как ты ешь, "
             "а также как это влияет на твое настроение и общее состояние. \n\n"
             "С моей помощью ты сможешь лучше понять свои пищевые привычки, выявить причины перееданий и улучшить самочувствие.\n\n"
@@ -46,12 +54,12 @@ async def start(message: types.Message, state: FSMContext):
             "Если хочешь, я могу задавать тебе вопросы о том, что ты ешь, как себя чувствуешь и многое другое.\n\n"
             "Давай начнем! Как тебя зовут?"
         )
-
         await state.set_state(DiaryForm.name)
-    await message.answer(text)
+        await message.answer(text)
 
 @dp.message(DiaryForm.name)
 async def process_name(message: types.Message, state: FSMContext):
+    logger.info(f"Processing name for user {message.from_user.id}: {message.text}")
     await state.update_data(name=message.text)
     kb = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]],
@@ -62,8 +70,10 @@ async def process_name(message: types.Message, state: FSMContext):
 
 @dp.message(DiaryForm.gender)
 async def gender(message: types.Message, state: FSMContext):
+    logger.info(f"Processing gender for user {message.from_user.id}: {message.text}")
     gender = message.text.lower()
     data = await state.get_data()
+    logger.info(f"Saving user data: id={message.from_user.id}, name={data['name']}, gender={gender}")
     await save_user(message.from_user.id, data["name"], gender)
     await state.update_data(gender=gender)
     kb = ReplyKeyboardMarkup(
