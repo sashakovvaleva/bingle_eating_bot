@@ -1,5 +1,5 @@
 # emotion_bot/bot.py
-# Last updated: 2024-03-21 - Fixed for Railway deployment
+# Last updated: 2025-05-27 - Added detailed emotion descriptions
 
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -18,9 +18,7 @@ import sys
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
@@ -53,29 +51,29 @@ async def start(message: types.Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if user:
         name, _ = user
-        text = f"Привет, {name}! Я бот-дневник питания и эмоций.\n\nКоманда: /meal — начать запись приема пищи"
-        await message.answer(text)
+        await message.answer(f"Снова здравствуй, {name}!\n\nКоманда: /meal — начать запись приема пищи")
     else:
-        text = (
+        await state.set_state(DiaryForm.name)
+        await message.answer(
             "Привет! 👋\n\n"
             "Я — твой личный бот-дневник питания и эмоций. Помогаю отслеживать, что и как ты ешь, "
-            "а также как это влияет на твое настроение и общее состояние. \n\n"
-            "С моей помощью ты сможешь лучше понять свои пищевые привычки, выявить причины перееданий и улучшить самочувствие.\n\n"
-            "Когда будешь готов(а), просто введи команду /meal, чтобы начать запись приема пищи.\n"
-            "Если хочешь, я могу задавать тебе вопросы о том, что ты ешь, как себя чувствуешь и многое другое.\n\n"
-            "Давай начнем! Как тебя зовут?"
+            "а также как это влияет на твоё настроение, эмоциональное состояние и здоровье в целом.\n\n"
+            "📌 Вот как мы будем работать вместе:\n"
+            "1️⃣ Ты будешь записывать приёмы пищи (можно быстро и в любое время).\n"
+            "2️⃣ Я задам несколько коротких вопросов: каков был голод до еды, насколько ты насытился(лась), "
+            "где ты ел(а), с кем, как себя чувствовал(а) и т.д.\n"
+            "3️⃣ Это поможет тебе замечать связи между эмоциями, питанием и самочувствием, "
+            "а также отслеживать переедания или пищевые срывы.\n\n"
+            "🔄 Когда ты захочешь сделать запись — просто введи команду /meal (можно в любое время).\n"
+            "✨ Чтобы начать, скажи, пожалуйста, как тебя зовут?\n\n"
+            "📥 Введи своё имя в ответ на это сообщение 👇"
         )
-        await state.set_state(DiaryForm.name)
-        await message.answer(text)
 
 @dp.message(DiaryForm.name)
 async def process_name(message: types.Message, state: FSMContext):
-    logger.info(f"Processing name for user {message.from_user.id}: {message.text}")
     await state.update_data(name=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]
-        ],
+        keyboard=[[KeyboardButton(text="Мужской"), KeyboardButton(text="Женский")]],
         resize_keyboard=True
     )
     await message.answer("Выбери пол:", reply_markup=kb)
@@ -83,10 +81,8 @@ async def process_name(message: types.Message, state: FSMContext):
 
 @dp.message(DiaryForm.gender)
 async def gender(message: types.Message, state: FSMContext):
-    logger.info(f"Processing gender for user {message.from_user.id}: {message.text}")
     gender = message.text.lower()
     data = await state.get_data()
-    logger.info(f"Saving user data: id={message.from_user.id}, name={data['name']}, gender={gender}")
     await save_user(message.from_user.id, data["name"], gender)
     await state.update_data(gender=gender)
     kb = ReplyKeyboardMarkup(
@@ -134,12 +130,23 @@ async def hunger_before(message: types.Message, state: FSMContext):
 @dp.message(DiaryForm.satiety_after)
 async def satiety_after(message: types.Message, state: FSMContext):
     await state.update_data(satiety_after=int(message.text))
-    emotions = ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]
+    emotions = [
+        "😐 Нейтрально / никаких ярких эмоций",
+        "😊 Радость / удовлетворение / спокойствие",
+        "😢 Грусть / разочарование / одиночество",
+        "😠 Злость / раздражение / обида",
+        "😰 Тревога / беспокойство / паника",
+        "😴 Усталость / опустошение / вялость",
+        "😞 Стыд / вина / самокритика",
+        "🤯 Стресс / давление / перегрузка",
+        "🥱 Скука / апатия / безразличие",
+        "😍 Вдохновение / воодушевление / благодарность"
+    ]
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=emotion)] for emotion in emotions], 
+        keyboard=[[KeyboardButton(text=emotion)] for emotion in emotions],
         resize_keyboard=True
     )
-    await message.answer("Какую эмоцию ты испытывал(а)?", reply_markup=kb)
+    await message.answer("Какую эмоцию ты испытывал(а)? Выбери наиболее подходящее описание своего состояния:", reply_markup=kb)
     await state.set_state(DiaryForm.emotion)
 
 @dp.message(DiaryForm.emotion)
@@ -159,9 +166,7 @@ async def emotion(message: types.Message, state: FSMContext):
 async def sleep_hours(message: types.Message, state: FSMContext):
     await state.update_data(sleep_hours=float(message.text))
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]
-        ],
+        keyboard=[[KeyboardButton(text="дома"), KeyboardButton(text="работа"), KeyboardButton(text="кафе")]],
         resize_keyboard=True
     )
     await message.answer("Где ты ел(а)?", reply_markup=kb)
@@ -171,9 +176,7 @@ async def sleep_hours(message: types.Message, state: FSMContext):
 async def location(message: types.Message, state: FSMContext):
     await state.update_data(location=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]
-        ],
+        keyboard=[[KeyboardButton(text="один/одна"), KeyboardButton(text="с кем-то")]],
         resize_keyboard=True
     )
     await message.answer("Ты ел(а) один/одна или с кем-то?", reply_markup=kb)
@@ -183,9 +186,7 @@ async def location(message: types.Message, state: FSMContext):
 async def company(message: types.Message, state: FSMContext):
     await state.update_data(company=message.text)
     kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]
-        ],
+        keyboard=[[KeyboardButton(text="с телефоном"), KeyboardButton(text="без телефона")]],
         resize_keyboard=True
     )
     await message.answer("Ты ел(а) с телефоном или без?", reply_markup=kb)
@@ -229,41 +230,22 @@ async def binge_eating(message: types.Message, state: FSMContext):
 
 async def main():
     logger.info("Starting bot initialization...")
-    
     try:
-        # Инициализация базы данных
         await init_db()
         logger.info("Database initialized successfully")
-        
-        # Очистка webhook и pending updates для Railway
-        logger.info("Clearing webhook and pending updates...")
         await bot.delete_webhook(drop_pending_updates=True)
-        await asyncio.sleep(1)  # Небольшая пауза
-        
-        # Получение информации о боте
+        await asyncio.sleep(1)
         bot_info = await bot.get_me()
         logger.info(f"Bot started: @{bot_info.username} (ID: {bot_info.id})")
-        
-        # Запуск polling с обработкой ошибок
-        logger.info("Starting polling...")
-        await dp.start_polling(
-            bot, 
-            skip_updates=True,  # Пропускаем старые обновления
-            allowed_updates=["message", "callback_query"]
-        )
-        
+        await dp.start_polling(bot, skip_updates=True, allowed_updates=["message", "callback_query"])
     except Exception as e:
         logger.error(f"Error during bot startup: {e}")
         if "Conflict" in str(e):
-            logger.error("Bot conflict detected. This usually means:")
-            logger.error("1. Another instance is already running")
-            logger.error("2. Previous deployment didn't shut down properly")
-            logger.error("3. Multiple Railway services are running the same bot")
-            logger.error("Please check your Railway dashboard and stop other instances")
+            logger.error("Bot conflict detected. Check Railway dashboard for duplicate instances.")
         raise
     finally:
         logger.info("Shutting down bot...")
-        await close_db()  # Закрываем соединения с БД
+        await close_db()
         await bot.session.close()
 
 if __name__ == "__main__":
