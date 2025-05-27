@@ -53,7 +53,7 @@ async def start(message: types.Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if user:
         name, _ = user
-        text = f"Привет, {name}! Я бот-дневник питания и эмоций.\n\nКоманда: /meal — начать приём пищи"
+        text = f"Привет, {name}! Я бот-дневник питания и эмоций.\n\nКоманда: /meal — начать запись приема пищи"
         await message.answer(text)
     else:
         text = (
