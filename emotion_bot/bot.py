@@ -1,5 +1,5 @@
 # emotion_bot/bot.py
-# Last updated: 2024-03-21 - Added logging for better debugging
+# Last updated: 2024-03-21 - Fixed keyboard creation syntax for aiogram 3.x
 
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -116,7 +116,11 @@ async def hunger_before(message: types.Message, state: FSMContext):
 async def satiety_after(message: types.Message, state: FSMContext):
     await state.update_data(satiety_after=int(message.text))
     emotions = ["никаких ярких эмоций", "счастье", "стресс", "злость", "скука", "тревога", "грусть", "усталость"]
-    kb = ReplyKeyboardMarkup([[KeyboardButton(text=em)] for em in emotions], resize_keyboard=True)
+    # ИСПРАВЛЕНО: правильный синтаксис для создания клавиатуры
+    kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=em)] for em in emotions], 
+        resize_keyboard=True
+    )
     await message.answer("Какую эмоцию ты испытывал(а)?", reply_markup=kb)
     await state.set_state(DiaryForm.emotion)
 
