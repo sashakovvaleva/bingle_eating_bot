@@ -273,6 +273,7 @@ async def binge_eating(message: types.Message, state: FSMContext):
     name = user[0] if user else "Пользователь"
     await message.answer(f"Спасибо, {name}! Всё записано 🙌", reply_markup=types.ReplyKeyboardRemove())
     await state.clear()
+
 async def send_daily_reminder():
     """Send daily reminder to all users"""
     logger.info("Sending daily reminders...")
@@ -298,6 +299,17 @@ async def send_daily_reminder():
     except Exception as e:
         logger.error(f"Error in daily reminder: {e}")
 
+async def reminder_task():
+    """Task for sending daily reminders"""
+    while True:
+        now = datetime.now()
+        target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        if now > target_time:
+            target_time = target_time + timedelta(days=1)
+        delay = (target_time - now).total_seconds()
+        await asyncio.sleep(delay)
+        await send_daily_reminder()
+
 async def main():
     logger.info("Starting bot initialization...")
     try:
@@ -308,16 +320,10 @@ async def main():
         bot_info = await bot.get_me()
         logger.info(f"Bot started: @{bot_info.username} (ID: {bot_info.id})")
         
-        # Schedule daily reminder at 16:00 (4 PM)
-        while True:
-            now = datetime.now()
-            target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
-            if now > target_time:
-                target_time = target_time + timedelta(days=1)
-            delay = (target_time - now).total_seconds()
-            await asyncio.sleep(delay)
-            await send_daily_reminder()
-            
+        # Start reminder task in parallel
+        asyncio.create_task(reminder_task())
+        
+        # Start the bot
         await dp.start_polling(bot, skip_updates=True, allowed_updates=["message", "callback_query"])
     except Exception as e:
         logger.error(f"Error during bot startup: {e}")
