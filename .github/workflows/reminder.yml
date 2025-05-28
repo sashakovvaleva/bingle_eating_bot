@@ -26,4 +26,4 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          python reminder_runner.py
+          python emotion_bot/reminder_runner.py
