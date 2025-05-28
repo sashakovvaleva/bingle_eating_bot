@@ -234,7 +234,7 @@ async def binge_eating(message: types.Message, state: FSMContext):
 async def send_test_reminder():
     logger.info("🧪 Sending test reminder...")
     try:
-        test_user_id = YOUR_TELEGRAM_ID  # <<< ЗАМЕНИ на свой ID
+        test_user_id = 1121230786 # <<< ЗАМЕНИ на свой ID
         await bot.send_message(
             test_user_id,
             "🔔 Тестовое напоминание: reminder работает!",
