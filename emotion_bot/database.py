@@ -97,8 +97,17 @@ async def create_tables():
                     location TEXT,
                     company TEXT,
                     phone TEXT,
-                    cycle_day INTEGER,
                     binge_eating TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Создаем таблицу для дней цикла
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS cycle_days (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT REFERENCES users(id),
+                    cycle_day INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
@@ -109,6 +118,12 @@ async def create_tables():
             """)
             await conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at);
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cycle_days_user_id ON cycle_days(user_id);
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cycle_days_created_at ON cycle_days(created_at);
             """)
             
             logger.info("Tables created successfully")
@@ -166,8 +181,8 @@ async def insert_entry(user_id, data):
             await conn.execute("""
                 INSERT INTO entries (
                     user_id, hunger_before, satiety_after, emotion,
-                    sleep_hours, location, company, phone, cycle_day, binge_eating
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    sleep_hours, location, company, phone, binge_eating
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """, 
                 user_id,
                 data.get("hunger_before"),
@@ -177,7 +192,6 @@ async def insert_entry(user_id, data):
                 data.get("location"),
                 data.get("company"),
                 data.get("phone"),
-                data.get("cycle_day"),
                 data.get("binge_eating")
             )
             logger.info("Entry inserted successfully")
@@ -204,6 +218,44 @@ async def get_user_entries(user_id, limit=10):
     except Exception as e:
         logger.error(f"Error getting user entries: {e}")
         return []
+
+async def get_last_cycle_day(user_id):
+    """Получение последнего дня цикла пользователя"""
+    logger.info(f"Getting last cycle day for user_id: {user_id}")
+    pool = await get_pool()
+    
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT cycle_day 
+                FROM cycle_days 
+                WHERE user_id = $1 
+                AND DATE(created_at) = CURRENT_DATE
+                ORDER BY created_at DESC 
+                LIMIT 1
+            """, user_id)
+            return row['cycle_day'] if row else None
+            
+    except Exception as e:
+        logger.error(f"Error getting last cycle day: {e}")
+        return None
+
+async def save_cycle_day(user_id, cycle_day):
+    """Сохранение дня цикла"""
+    logger.info(f"Saving cycle day for user_id: {user_id}")
+    pool = await get_pool()
+    
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO cycle_days (user_id, cycle_day)
+                VALUES ($1, $2)
+            """, user_id, cycle_day)
+            logger.info("Cycle day saved successfully")
+            
+    except Exception as e:
+        logger.error(f"Error saving cycle day: {e}")
+        raise
 
 async def close_db():
     """Закрытие пула соединений (вызывается при завершении приложения)"""

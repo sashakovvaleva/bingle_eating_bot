@@ -8,11 +8,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
-from database import init_db, insert_entry, get_user, save_user, close_db
+from database import init_db, insert_entry, get_user, save_user, close_db, get_last_cycle_day, save_cycle_day
 from dotenv import load_dotenv
 import os
 import logging
 import sys
+from datetime import datetime, timedelta
 
 # Настройка логирования
 logging.basicConfig(
@@ -51,7 +52,14 @@ async def start(message: types.Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if user:
         name, _ = user
-        await message.answer(f"Снова здравствуй, {name}!\n\nКоманда: /meal — начать запись приема пищи")
+        await message.answer(
+            f"Снова здравствуй, {name}!\n\n"
+            "Нажми на кнопку ниже, чтобы записать приём пищи 👇",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="📝 Записать приём пищи")]],
+                resize_keyboard=True
+            )
+        )
     else:
         await state.set_state(DiaryForm.name)
         await message.answer(
@@ -64,10 +72,13 @@ async def start(message: types.Message, state: FSMContext):
             "где ты ел(а), с кем, как себя чувствовал(а) и т.д.\n"
             "3️⃣ Это поможет тебе замечать связи между эмоциями, питанием и самочувствием, "
             "а также отслеживать переедания или пищевые срывы.\n\n"
-            "🔄 Когда ты захочешь сделать запись — просто введи команду /meal (можно в любое время).\n"
             "✨ Чтобы начать, скажи, пожалуйста, как тебя зовут?\n\n"
             "📥 Введи своё имя в ответ на это сообщение 👇"
         )
+
+@dp.message(lambda message: message.text == "📝 Записать приём пищи")
+async def meal_button(message: types.Message, state: FSMContext):
+    await meal(message, state)
 
 @dp.message(DiaryForm.name)
 async def process_name(message: types.Message, state: FSMContext):
@@ -202,23 +213,34 @@ async def phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=message.text)
     data = await state.get_data()
     if data["gender"] == "женский":
-        await message.answer(
-            "Какой сегодня день цикла?\n\n"
-            "📝 Введи число от 1 до 40\n"
-            "(В зависимости от длины твоего цикла эта цифра может варьироваться)\n\n"
-            "• 1-5 день: менструация\n"
-            "• 6-14 день: фолликулярная фаза\n"
-            "• 15-28 день: лютеиновая фаза\n"
-            "• 29-40 день: возможна задержка",
-            reply_markup=types.ReplyKeyboardRemove()
-        )
-        await state.set_state(DiaryForm.cycle_day)
+        # Проверяем, был ли уже введен день цикла сегодня
+        cycle_day = await get_last_cycle_day(message.from_user.id)
+        if cycle_day is not None:
+            # Если день цикла уже был введен сегодня, используем его
+            await state.update_data(cycle_day=cycle_day)
+            await ask_binge(message, state)
+        else:
+            # Если день цикла еще не был введен, спрашиваем
+            await message.answer(
+                "Какой сегодня день цикла?\n\n"
+                "📝 Введи число от 1 до 40\n"
+                "(В зависимости от длины твоего цикла эта цифра может варьироваться)\n\n"
+                "• 1-5 день: менструация\n"
+                "• 6-14 день: фолликулярная фаза\n"
+                "• 15-28 день: лютеиновая фаза\n"
+                "• 29-40 день: возможна задержка",
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+            await state.set_state(DiaryForm.cycle_day)
     else:
         await ask_binge(message, state)
 
 @dp.message(DiaryForm.cycle_day)
 async def cycle_day(message: types.Message, state: FSMContext):
-    await state.update_data(cycle_day=int(message.text))
+    cycle_day = int(message.text)
+    await state.update_data(cycle_day=cycle_day)
+    # Сохраняем день цикла в отдельную таблицу
+    await save_cycle_day(message.from_user.id, cycle_day)
     await ask_binge(message, state)
 
 async def ask_binge(message: types.Message, state: FSMContext):
@@ -251,6 +273,30 @@ async def binge_eating(message: types.Message, state: FSMContext):
     name = user[0] if user else "Пользователь"
     await message.answer(f"Спасибо, {name}! Всё записано 🙌", reply_markup=types.ReplyKeyboardRemove())
     await state.clear()
+async def send_daily_reminder():
+    """Send daily reminder to all users"""
+    logger.info("Sending daily reminders...")
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            # Get all unique user IDs
+            users = await conn.fetch("SELECT DISTINCT id FROM users")
+            for user in users:
+                try:
+                    await bot.send_message(
+                        user['id'],
+                        "Небольшое напоминание 🌿\n\n"
+                        "Если вдруг почувствуешь, что хочется записать, как ты себя сегодня ощущаешь — это может помочь общему процессу. Всё по желанию, никакой спешки и обязательств.\n\n"
+                        "Твоё участие для нас действительно важно. Каждый из нас — часть чего-то большего. Спасибо, что ты уделяешь время и делишься чувствами.",
+                        reply_markup=ReplyKeyboardMarkup(
+                            keyboard=[[KeyboardButton(text="📝 Записать приём пищи")]],
+                            resize_keyboard=True
+                        )
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send reminder to user {user['id']}: {e}")
+    except Exception as e:
+        logger.error(f"Error in daily reminder: {e}")
 
 async def main():
     logger.info("Starting bot initialization...")
@@ -261,6 +307,17 @@ async def main():
         await asyncio.sleep(1)
         bot_info = await bot.get_me()
         logger.info(f"Bot started: @{bot_info.username} (ID: {bot_info.id})")
+        
+        # Schedule daily reminder at 16:00 (4 PM)
+        while True:
+            now = datetime.now()
+            target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+            if now > target_time:
+                target_time = target_time + timedelta(days=1)
+            delay = (target_time - now).total_seconds()
+            await asyncio.sleep(delay)
+            await send_daily_reminder()
+            
         await dp.start_polling(bot, skip_updates=True, allowed_updates=["message", "callback_query"])
     except Exception as e:
         logger.error(f"Error during bot startup: {e}")
