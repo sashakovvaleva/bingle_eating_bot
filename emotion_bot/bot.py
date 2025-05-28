@@ -8,7 +8,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
-from database import init_db, insert_entry, get_user, save_user, close_db, get_last_cycle_day, save_cycle_day
+from database import (
+    init_db, insert_entry, get_user, save_user, close_db,
+    get_last_cycle_day, save_cycle_day, get_pool
+)
 from dotenv import load_dotenv
 import os
 import logging
@@ -277,11 +280,12 @@ async def binge_eating(message: types.Message, state: FSMContext):
 async def send_daily_reminder():
     """Send daily reminder to all users"""
     logger.info("Sending daily reminders...")
-    pool = await get_pool()
     try:
+        pool = await get_pool()
         async with pool.acquire() as conn:
             # Get all unique user IDs
             users = await conn.fetch("SELECT DISTINCT id FROM users")
+            logger.info(f"Found {len(users)} users to send reminders")
             for user in users:
                 try:
                     await bot.send_message(
@@ -294,6 +298,7 @@ async def send_daily_reminder():
                             resize_keyboard=True
                         )
                     )
+                    logger.info(f"Reminder sent to user {user['id']}")
                 except Exception as e:
                     logger.error(f"Failed to send reminder to user {user['id']}: {e}")
     except Exception as e:
@@ -301,14 +306,20 @@ async def send_daily_reminder():
 
 async def reminder_task():
     """Task for sending daily reminders"""
+    logger.info("Starting reminder task...")
     while True:
-        now = datetime.now()
-        target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
-        if now > target_time:
-            target_time = target_time + timedelta(days=1)
-        delay = (target_time - now).total_seconds()
-        await asyncio.sleep(delay)
-        await send_daily_reminder()
+        try:
+            now = datetime.now()
+            target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+            if now > target_time:
+                target_time = target_time + timedelta(days=1)
+            delay = (target_time - now).total_seconds()
+            logger.info(f"Next reminder will be sent in {delay/3600:.1f} hours")
+            await asyncio.sleep(delay)
+            await send_daily_reminder()
+        except Exception as e:
+            logger.error(f"Error in reminder task: {e}")
+            await asyncio.sleep(60)  # Wait a minute before retrying if there's an error
 
 async def main():
     logger.info("Starting bot initialization...")
