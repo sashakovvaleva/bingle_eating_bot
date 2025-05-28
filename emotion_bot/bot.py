@@ -310,7 +310,7 @@ async def reminder_task():
     while True:
         try:
             now = datetime.now()
-            target_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
+            target_time = now.replace(hour=21, minute=0, second=0, microsecond=0)
             if now > target_time:
                 target_time = target_time + timedelta(days=1)
             delay = (target_time - now).total_seconds()
