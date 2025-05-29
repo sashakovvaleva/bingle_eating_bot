@@ -1,5 +1,5 @@
 import asyncio
-from emotion_bot.bot import send_daily_reminder, init_db, close_db
+from bot import send_daily_reminder, init_db, close_db
 from dotenv import load_dotenv
 import logging
 import sys

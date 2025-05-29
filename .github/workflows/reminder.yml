@@ -1,0 +1,29 @@
+name: Daily Reminder
+
+on:
+  schedule:
+    - cron: "15 12 * * *"  # каждый день в 07:00 UTC (напр., 10:00 по МСК)
+  workflow_dispatch:      # позволяет вручную запускать из GitHub UI
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run reminder
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python emotion_bot/reminder_runner.py
