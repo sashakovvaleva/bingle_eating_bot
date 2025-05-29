@@ -251,7 +251,8 @@ async def ask_binge(message: types.Message, state: FSMContext):
         keyboard=[
             [KeyboardButton(text="✅ Нет, обычный приём пищи"), KeyboardButton(text="⚠️ Лёгкое переедание")],
             [KeyboardButton(text="❗ Сильное переедание"), KeyboardButton(text="🔥 Срыв/компульсивное переедание")],
-            [KeyboardButton(text="🤔 Не уверен(а)"), KeyboardButton(text="💭 Хочу отметить детали")]
+            [KeyboardButton(text="🤔 Не уверен(а)")],
+            [KeyboardButton(text="📝 Записать приём пищи")]
         ],
         resize_keyboard=True
     )
@@ -261,8 +262,7 @@ async def ask_binge(message: types.Message, state: FSMContext):
         "• Лёгкое переедание — съел(а) больше обычного, но без сильного дискомфорта\n"
         "• Сильное переедание — съел(а) значительно больше, есть дискомфорт\n"
         "• Срыв — потеря контроля над количеством еды\n"
-        "• Не уверен(а) — сложно оценить\n"
-        "• Хочу отметить детали — есть что добавить",
+        "• Не уверен(а) — сложно оценить",
         reply_markup=kb
     )
     await state.set_state(DiaryForm.binge_eating)
@@ -274,7 +274,13 @@ async def binge_eating(message: types.Message, state: FSMContext):
     await insert_entry(message.from_user.id, data)
     user = await get_user(message.from_user.id)
     name = user[0] if user else "Пользователь"
-    await message.answer(f"Спасибо, {name}! Всё записано 🙌", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer(
+        f"Спасибо, {name}! Всё записано 🙌",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="📝 Записать приём пищи")]],
+            resize_keyboard=True
+        )
+    )
     await state.clear()
 
 async def send_daily_reminder():
